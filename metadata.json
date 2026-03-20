@@ -1,0 +1,5 @@
+{
+  "name": "RiderRelief",
+  "description": "Parametric insurance for gig and delivery workers. Automatic payouts based on weather events and verified location data.",
+  "requestFramePermissions": ["geolocation"]
+}

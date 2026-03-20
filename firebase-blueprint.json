@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A worker or admin in the system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["worker", "admin"] },
+        "zone": { "type": "string" },
+        "activeHours": { "type": "object" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "lastLocation": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Claim": {
+      "title": "Claim",
+      "description": "A parametric insurance claim.",
+      "type": "object",
+      "properties": {
+        "workerUid": { "type": "string" },
+        "weatherEventId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "flagged"] },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "verificationScore": { "type": "number" },
+        "layers": { "type": "object" }
+      },
+      "required": ["workerUid", "status", "amount", "timestamp"]
+    },
+    "SensorLog": {
+      "title": "SensorLog",
+      "description": "Real-time sensor data from a worker's device.",
+      "type": "object",
+      "properties": {
+        "workerUid": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": { "type": "object" },
+        "accelerometer": { "type": "object" },
+        "gyroscope": { "type": "object" },
+        "networkQuality": { "type": "string", "enum": ["good", "fair", "poor"] }
+      },
+      "required": ["workerUid", "timestamp", "location"]
+    },
+    "WeatherEvent": {
+      "title": "WeatherEvent",
+      "description": "A qualifying weather event.",
+      "type": "object",
+      "properties": {
+        "zone": { "type": "string" },
+        "severity": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["storm", "flood", "extreme_heat"] }
+      },
+      "required": ["zone", "severity", "timestamp", "type"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles and settings."
+    },
+    "/claims/{claimId}": {
+      "schema": "Claim",
+      "description": "Insurance claims."
+    },
+    "/sensorLogs/{logId}": {
+      "schema": "SensorLog",
+      "description": "Historical sensor data for verification."
+    },
+    "/weatherEvents/{eventId}": {
+      "schema": "WeatherEvent",
+      "description": "Detected weather events."
+    }
+  }
+}

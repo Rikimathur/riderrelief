@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - name: string (optional)
+    //   - role: string (required, enum: ["worker", "admin"])
+    //   - zone: string (optional)
+    //   - activeHours: map (optional)
+    //   - status: string (optional, enum: ["active", "inactive"])
+    //   - lastLocation: map (optional)
+    //   - updatedAt: timestamp (optional)
+    
+    // Collection: claims
+    // Document ID: {claimId}
+    // Fields:
+    //   - workerUid: string (required)
+    //   - weatherEventId: string (optional)
+    //   - status: string (required, enum: ["pending", "approved", "rejected", "flagged"])
+    //   - amount: number (required)
+    //   - timestamp: timestamp (required)
+    //   - verificationScore: number (optional)
+    //   - layers: map (optional)
+    
+    // Collection: sensorLogs
+    // Document ID: {logId}
+    // Fields:
+    //   - workerUid: string (required)
+    //   - timestamp: timestamp (required)
+    //   - location: map (required)
+    //   - accelerometer: map (optional)
+    //   - gyroscope: map (optional)
+    //   - networkQuality: string (optional, enum: ["good", "fair", "poor"])
+    
+    // Collection: weatherEvents
+    // Document ID: {eventId}
+    // Fields:
+    //   - zone: string (required)
+    //   - severity: string (required)
+    //   - timestamp: timestamp (required)
+    //   - type: string (required, enum: ["storm", "flood", "extreme_heat"])
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "ritwikmathur2@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['worker', 'admin'] &&
+             (!('status' in data) || data.status in ['active', 'inactive']);
+    }
+
+    function isValidClaim(data) {
+      return data.keys().hasAll(['workerUid', 'status', 'amount', 'timestamp']) &&
+             data.workerUid is string &&
+             data.status in ['pending', 'approved', 'rejected', 'flagged'] &&
+             data.amount is number &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidSensorLog(data) {
+      return data.keys().hasAll(['workerUid', 'timestamp', 'location']) &&
+             data.workerUid is string &&
+             data.timestamp is timestamp &&
+             data.location is map;
+    }
+
+    function isValidWeatherEvent(data) {
+      return data.keys().hasAll(['zone', 'severity', 'timestamp', 'type']) &&
+             data.zone is string &&
+             data.severity is string &&
+             data.timestamp is timestamp &&
+             data.type in ['storm', 'flood', 'extreme_heat'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (isOwner(uid) || isAdmin());
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) || isAdmin());
+    }
+
+    match /claims/{claimId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.workerUid) || isAdmin());
+      allow create: if isAuthenticated() && isValidClaim(request.resource.data) && (isOwner(request.resource.data.workerUid) || isAdmin());
+      allow update: if isAuthenticated() && isAdmin();
+    }
+
+    match /sensorLogs/{logId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.workerUid) || isAdmin());
+      allow create: if isAuthenticated() && isValidSensorLog(request.resource.data) && isOwner(request.resource.data.workerUid);
+      allow update: if false;
+    }
+
+    match /weatherEvents/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isAdmin();
+    }
+  }
+}
